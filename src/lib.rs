@@ -1,14 +1,11 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+mod token;
+mod ast;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+use token::Token;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+pub fn pascal(input: &str) -> Result<u32, &str> {
+    match ast::expr_add(&Token::split(input)) {
+        Ok((_, expr)) => Ok(expr.expr()),
+        Err((_, msg)) => Err(msg.clone()),
     }
 }
