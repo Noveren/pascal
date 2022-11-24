@@ -6,7 +6,6 @@ mod test_token;
 pub enum Token {
     Undefined,
     EOF,
-    WS,
     Plus,
     Integer(u32),
 }
@@ -17,7 +16,6 @@ impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Token::Undefined => write!(f, "Undefined"),
-            Token::WS => write!(f, " "),
             Token::EOF  => write!(f, "EOF"),
             Token::Plus => write!(f, "+"),
             Token::Integer(ref num) => write!(f, "Integer({})", *num),
@@ -43,7 +41,7 @@ impl Token {
                             }
                         }
                         src = &src[len..];
-                        tokens.push(Token::WS);
+                        // 空白符不作为 Token
                     } else if c == '+' {
                         src = &src['+'.len_utf8()..];
                         tokens.push(Token::Plus);

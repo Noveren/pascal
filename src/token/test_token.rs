@@ -12,7 +12,7 @@ fn one_bit_addition() {
 fn whitespace() {
     assert_eq!(
         Token::split(" 1   +   3").unwrap(),
-        vec![WS, Integer(1), WS, Plus, WS, Integer(3), EOF],
+        vec![Integer(1), Plus, Integer(3), EOF],
     )
 }
 
