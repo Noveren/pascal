@@ -9,6 +9,14 @@ fn one_bit_addition() {
 }
 
 #[test]
+fn whitespace() {
+    assert_eq!(
+        Token::split(" 1   +   3").unwrap(),
+        vec![WS, Integer(1), WS, Plus, WS, Integer(3), EOF],
+    )
+}
+
+#[test]
 fn multi_digit_decimal_integer() {
     assert_eq!(
         Token::split("11+33").unwrap(),
