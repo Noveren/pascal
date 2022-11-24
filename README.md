@@ -1,5 +1,5 @@
 ## Pascal 解释器 - Rust 实现
-
+> connect to Thinkpad E490 and Macbook Air M2
 词元定义
 
 ```
