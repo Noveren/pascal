@@ -34,14 +34,14 @@ fn test_expr_add() {
     use Token::*;
     assert_eq!(
         Ok((&vec![EOF][..], ExprAdd {operand: (1, 3)})),
-        expr_add.parse(&Token::split("1+3")),
+        expr_add.parse(&Token::split("1+3").unwrap()),
     );
     assert_eq!(
-        Err((&vec![Integer(1), Integer(1), Plus, Integer(3), EOF][..], "failed to match")),
-        expr_add.parse(&Token::split("11+3")),
+        Ok((&vec![EOF][..], ExprAdd {operand: (11, 3)})),
+        expr_add.parse(&Token::split("11+3").unwrap()),
     );
     assert_eq!(
         Err((&vec![Integer(1), Plus, EOF][..], "too short to parser")),
-        expr_add.parse(&Token::split("1+")),
+        expr_add.parse(&Token::split("1+").unwrap()),
     );
 }

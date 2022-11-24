@@ -25,21 +25,27 @@ impl std::fmt::Display for Token {
 
 impl Token {
     #[allow(unused)]
-    pub fn split(mut src: &str) -> Tokens {
-        let mut tokens = Vec::<Token>::new();
+    pub fn split(mut src: &str) -> Result<Tokens, &str> {
+        let mut tokens = Vec::<Token>::new();   // 词法解析结果
         loop {
             match src.chars().next() {
                 Some(c) => {
-                    src = &src[c.len_utf8()..];
                     if c == '+' {
                         tokens.push(Token::Plus);
+                        src = &src['+'.len_utf8()..];
                         continue;
+                    } else if c.is_digit(10) {
+                        if let Ok((v, len)) = catch_u32_interger(src) {
+                            src = &src[len..];
+                            tokens.push(Token::Integer(v));
+                            continue;
+                        } else {
+                            return Err(src);
+                        }
+                    } else {
+                        src = &src[c.len_utf8()..];
+                        tokens.push(Token::Undefined);
                     }
-                    if c.is_digit(10) {
-                        tokens.push(Token::Integer(c.to_digit(10).unwrap()));
-                        continue;
-                    }
-                    tokens.push(Token::Undefined);
                 }
                 None => {
                     tokens.push(Token::EOF);
@@ -47,6 +53,27 @@ impl Token {
                 },
             }
         }
-        return tokens;
+        return Ok(tokens);
+    }
+}
+
+#[allow(unused)]
+fn catch_u32_interger(src: &str) -> Result<(u32, usize), ()> {
+    let mut stack = String::new();
+    for c in src.chars() {
+        if c.is_digit(10) {
+            stack.push(c);
+        } else {
+            break;
+        }
+    }
+    if stack.len() == 0 {
+        return Err(());
+    } else {
+        // TODO 考虑数字大于 u32 所能容纳
+        match stack.parse::<u32>() {
+            Ok(v) => Ok((v, stack.len())),
+            Err(_) => Err(())
+        }
     }
 }
