@@ -1,16 +1,20 @@
 ## Pascal 解释器 - Rust 实现
 > connect to Thinkpad E490 and Macbook Air M2
+
 词元定义
 
 ```
 <Plus>    ::= "+"
-<Integer> ::= [0-9]+
+<Minus>   ::= "-"
+<Number>  ::= [0-9]+
 ```
 
 语法定义
 
 ```
-ExprAdd   ::= <Integer><Plus><Integer>
+Expr	  ::=  Number
+			 | Expr BinOP Expr
+BinOp	  ::=  Plus
 ```
 
 
