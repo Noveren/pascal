@@ -17,7 +17,13 @@ Expr	  ::=  Number
 BinOp	  ::=  Plus
 ```
 
+```
+expr   ::= term (addop term)*
+term   ::= factor (mulop factor)*
+factor ::= expr | number
+```
 
++ 体现了优先级和结合性
 
 ## 拾遗
 
