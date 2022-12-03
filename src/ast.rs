@@ -6,24 +6,24 @@ use crate::token::{Token};
 
 pub type PResult<'a, O> = Result<(&'a [Token], O), &'a [Token]>;
 
-pub trait Parser<'a, O> {
-    fn parse(&self, input: &'a [Token]) -> PResult<'a, O>;
+pub trait Parser<O> {
+    fn parse<'a>(&self, input: &'a [Token]) -> PResult<'a, O>;
 }
 
-impl<'a, O, F> Parser<'a, O> for F
+impl<O, F> Parser<O> for F
 where
-    F: Fn(&'a [Token]) -> PResult<'a, O>,
+    F: Fn(&[Token]) -> PResult<O>,
 {
-    fn parse(&self, input: &'a [Token]) -> PResult<'a, O> {
+    fn parse<'a>(&self, input: &'a [Token]) -> PResult<'a, O> {
         self(input)
     }
 }
 
 #[allow(unused)]
-fn pair<'a, P1, P2, R1, R2>(p1: P1, p2: P2) -> impl Parser<'a, (R1, R2)>
+fn pair<'a, P1, P2, R1, R2>(p1: P1, p2: P2) -> impl Parser<(R1, R2)>
 where
-    P1: Parser<'a, R1>,
-    P2: Parser<'a, R2>,
+    P1: Parser<R1>,
+    P2: Parser<R2>,
 {
     move |input| p1.parse(input)
         .and_then(|(rest, r1)| {
@@ -33,24 +33,16 @@ where
 }
 
 #[allow(unused)]
-fn either<'a, P1, P2, R>(p1: P1, p2: P2) -> impl Parser<'a, R>
+fn either<'a, P1, P2, R>(p1: P1, p2: P2) -> impl Parser<R>
 where
-    P1: Parser<'a, R>,
-    P2: Parser<'a, R>,
+    P1: Parser<R>,
+    P2: Parser<R>,
 {
     move |input| match p1.parse(input) {
         ok @ Ok(_) => ok,
         Err(_) => p2.parse(input),
     }
 }
-
-// macro_rules! either {
-//     ($p1: expr, $p2: expr) => {eiter($p1, $p2)};
-//     ($p1: expr, $($p: expr),+, $pn: expr) => {
-//         either(p1)
-//     }
-// }
-
 
 // ============================================================================
 macro_rules! PubBinOprator {
@@ -112,7 +104,8 @@ fn number<'a>(input: &'a [Token]) -> PResult<'a, Expr> {
 }
 
 #[allow(unused)]
-fn symbol<'a, 'b>(expected: Token, s: &'b str) -> impl Parser<'a, &'b str> {
+fn symbol<'a, 'b>(expected: Token, s: &'b str) -> impl Fn(&'a [Token]) -> PResult<'a, &'b str>
+{
     move |input: &'a [Token]| match input.split_first() {
         Some((token, rest)) if *token == expected => Ok((rest, s)),
         _ => Err(input),
@@ -120,7 +113,7 @@ fn symbol<'a, 'b>(expected: Token, s: &'b str) -> impl Parser<'a, &'b str> {
 }
 
 #[allow(unused)]
-fn binop<'a>() -> impl Parser<'a, Expr> {
+fn binop<'a>() -> impl Parser<Expr> {
     use BinOprator::*;
     |input| pair(
         number, pair(
@@ -142,7 +135,7 @@ fn binop<'a>() -> impl Parser<'a, Expr> {
 }
 
 #[allow(unused)]
-fn expr<'a>() -> impl Parser<'a, Expr> {
+fn expr<'a>() -> impl Parser<Expr> {
     either(
         binop(),
         number,
@@ -150,7 +143,7 @@ fn expr<'a>() -> impl Parser<'a, Expr> {
 }
 
 #[allow(unused)]
-pub fn pascal<'a>() -> impl Parser<'a, Expr> {
+pub fn pascal<'a>() -> impl Parser<Expr> {
     expr()
 }
 
