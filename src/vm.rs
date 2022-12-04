@@ -83,8 +83,8 @@ impl VM {
             .map_err(|e| format!("Parser: {} at {}", e.1, e.0))?;
         println!("{}", ast.display());
         // 执行 AST
-        // self.exec(&ast)?;
-        // print!("{}", self);
+        self.exec(&ast)?;
+        print!("{}", self);
         return Ok(());
     }
 }
