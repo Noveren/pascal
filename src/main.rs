@@ -2,8 +2,10 @@ mod parser;
 mod utils;
 
 fn main() {
-    let (_, _ast) = parser::parse("122222 = 33333")
+    // 解析源码，获得 AST
+    let (_, ast) = parser::parse("122222 + 33333")
         .expect("Failed to parse\n\t");
+    println!("{}", ast.display());
 
 }
 
