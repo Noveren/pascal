@@ -40,7 +40,7 @@ impl<'a> Context<'a> {
 
 impl<'a> Display for Context<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "row: {} col: {} ...> {}...",
+        write!(f, "row: {} col: {} ---> {}",
             self.pos.0, self.pos.1,
             if self.src.len() > 8 { &self.src[0..8] } else { self.src }
         )

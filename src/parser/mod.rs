@@ -9,12 +9,10 @@ mod test_nom;
 pub use parser::parse;
 use std::fmt::Display;
 
-// TODO AST 数据结构定义
-
 macro_rules! symbol {
     ($($id: ident, $st: expr);*$(;)?) => {
         #[allow(unused)]
-        #[derive(Debug, PartialEq, Eq)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum Symbol {
             $($id),*
         }
@@ -35,7 +33,6 @@ symbol!{
     MUL, "*";
     DIV, "/";
 }
-
 
 
 #[allow(unused)]
