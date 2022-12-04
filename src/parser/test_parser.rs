@@ -1,4 +1,4 @@
-use super::{parser, nom};
+use super::{nom, parser, Node};
 #[allow(unused)]
 macro_rules! test_ok {
     ($parser: expr, $result: expr, $src: expr, $go: expr) => {
@@ -33,12 +33,9 @@ macro_rules! test_err {
 
 #[test]
 fn number() {
-    let p = nom::right(
-        parser::whitespace::<false>(),
-        parser::number::<10>(),
-    );
+    let p = parser::number();
     test_ok!(
-        p, "12".to_string(), "   12symbol", "   12"
+        p, Node::Number("12".to_string()), "   12symbol", "   12"
     );
     test_err!(
         p, "No Number".to_string(), "symbol"

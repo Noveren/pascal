@@ -1,3 +1,6 @@
+use crate::utils::catch;
+use std::fmt::Display;
+
 
 /// 上下文 字符串切片、解析位置、行、列
 #[allow(unused)]
@@ -32,6 +35,15 @@ impl<'a> Context<'a> {
                 }
             }
         }
+    }
+}
+
+impl<'a> Display for Context<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "row: {} col: {} ...> {}...",
+            self.pos.0, self.pos.1,
+            if self.src.len() > 8 { &self.src[0..8] } else { self.src }
+        )
     }
 }
 
@@ -87,6 +99,16 @@ pub trait Parser<'a, T> {
         ParserBox::new(
             move |ctx| self.parse(ctx)
                 .map(|(ctx, result)| (ctx, op(result)))
+        )
+    }
+    fn map_err<F: 'a>(self, op: F) -> ParserBox<'a, T>
+    where
+        Self: Sized + 'a,
+        F: Fn(&Context<'a>) -> String,
+    {
+        ParserBox::new(
+            move |ctx| self.parse(ctx)
+                .map_err(|(ctx, _)| (ctx, op(&ctx)))
         )
     }
     /// 可反驳，对解析结果进行断言
@@ -175,6 +197,20 @@ pub trait Parser<'a, T> {
             }
         )
     }
+
+    #[allow(unused)]
+    fn or<P: 'a>(self, p: P) -> ParserBox<'a, T>
+    where
+        Self: Sized + 'a,
+        P: Parser<'a, T>,
+    {
+        ParserBox::new(
+            move |ctx| match self.parse(ctx) {
+                ok @ Ok(_) => ok,
+                Err(_) => p.parse(ctx),
+            }
+        )
+    }
 }
 
 #[allow(unused)]
@@ -216,15 +252,14 @@ where
 
 /// 解析器适配器：先后二择器
 #[allow(unused)]
-pub fn either<'a, P1, P2, R>(p1: P1, p2: P2)
-    -> impl Parser<'a, R>
+pub fn either<'a, P1, P2, R>(p1: P1, p2: P2) -> impl Parser<'a, R>
 where
     P1: Parser<'a, R>,
     P2: Parser<'a, R>,
 {
     move |ctx| match p1.parse(ctx) {
         ok @ Ok(_) => ok,
-        Err(_) => p2.parse(ctx),
+        Err(_) => p2.parse(ctx).map_err(|(ctx, _)| (ctx, "Either".to_string())),
     }
 }
 
@@ -253,5 +288,32 @@ pub fn literal<'a>(expected: &'a str) -> impl Parser<'a, ()> {
         Some(c) if c == expected =>
             pok(ctx.move_str(expected), ()),
         _ => perr(ctx, format!("Literal {}", expected)),
+    }
+}
+
+/// 空白符
+#[allow(unused)]
+pub fn whitespace<'a, const NEC: bool>() -> impl Parser<'a, ()> {
+    move |ctx: Context<'a>| {
+        let len = catch(ctx.src, |c| c.is_whitespace());
+        if len == 0 && NEC {
+            perr(ctx, "No Whitespace".to_string())
+        } else {
+            pok(ctx.move_str(&ctx.src[0..len]), ())
+        }
+    }
+}
+
+/// 数字
+#[allow(unused)]
+pub fn number<'a, const RADIX: u32>() -> impl Parser<'a, String> {
+    move |ctx: Context<'a>| {
+        let len = catch(ctx.src, |c| c.is_digit(RADIX));
+        if len > 0 {
+            let num_str = &ctx.src[0..len];
+            pok(ctx.move_str(num_str), num_str.to_string())
+        } else {
+            perr(ctx, "No Number".to_string())
+        }
     }
 }

@@ -1,7 +1,10 @@
 mod parser;
+mod utils;
 
 fn main() {
-    println!("{:?}", "X".rsplit('X').collect::<Vec<&str>>().len());
+    let (_, _ast) = parser::parse("122222 = 33333")
+        .expect("Failed to parse\n\t");
+
 }
 
 // use std::io::Write;

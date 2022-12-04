@@ -1,42 +1,58 @@
-use super::nom::{Parser, Context, perr, pok};
+use super::{Node, Symbol};
+use super::{nom, nom::{Parser, pair, right, whitespace}};
+use super::nom::{the_char, PResult};
 
-/// 从字符串头开始匹配符合 op 的字符，返回字符的长度
 #[allow(unused)]
-fn catch<F>(src: &str, op: F) -> usize
-where
-    F: Fn(char) -> bool
-{
-    let mut len: usize = 0;
-    for c in src.chars() {
-        if !op(c) { break } 
-        len += c.len_utf8();
-    }
-    return len;
+pub fn number<'a>() -> impl Parser<'a, Node> {
+    right(
+        whitespace::<false>(),
+        nom::number::<10>(),
+    ).map(|s| Node::Number(s))
 }
 
-/// 空白符
 #[allow(unused)]
-pub fn whitespace<'a, const NEC: bool>() -> impl Parser<'a, ()> {
-    move |ctx: Context<'a>| {
-        let len = catch(ctx.src, |c| c.is_whitespace());
-        if len == 0 && NEC {
-            perr(ctx, "No Whitespace".to_string())
-        } else {
-            pok(ctx.move_str(&ctx.src[0..len]), ())
-        }
-    }
+pub fn expr<'a>() -> impl Parser<'a, Node> {
+    pair(
+        number(),
+        pair(
+                right(whitespace::<false>(), the_char::<'+'>)
+            .or(right(whitespace::<false>(), the_char::<'-'>))
+            .or(right(whitespace::<false>(), the_char::<'*'>))
+            .or(right(whitespace::<false>(), the_char::<'/'>))
+            .map_err(|ctx| format!("Undefined Symbol at {}", ctx)),
+            number(),
+        )
+    ).map(|(n1, (op, n2))| Node::Expr(
+        match op {
+            '+' => Symbol::ADD,
+            '-' => Symbol::SUB,
+            '*' => Symbol::MUL,
+             _  => Symbol::DIV,
+        }, vec![n1, n2]
+    ))
 }
 
-/// 数字
+/// 执行 Block，记录并打印执行时间，然后返回 Block 的值
+macro_rules! time {
+    ($code: block) => {{
+        let start = std::time::SystemTime::now();
+        let result = $code;
+        let end   = std::time::SystemTime::now();
+        println!("The time of parsing source code: {:?}",
+            end.duration_since(start)
+                .expect("Clock may have gone backwards")
+        );
+        result
+    }};
+}
+
+/// 语法分析器接口
 #[allow(unused)]
-pub fn number<'a, const RADIX: u32>() -> impl Parser<'a, String> {
-    move |ctx: Context<'a>| {
-        let len = catch(ctx.src, |c| c.is_digit(RADIX));
-        if len > 0 {
-            let num_str = &ctx.src[0..len];
-            pok(ctx.move_str(num_str), num_str.to_string())
-        } else {
-            perr(ctx, "No Number".to_string())
-        }
-    }
+pub fn parse(src: &str) -> PResult<Node> {   
+    time!({
+        // 生成解析器
+        let p = expr();
+        // 执行解析
+        p.parse(super::nom::Context::new(src))
+    })
 }
