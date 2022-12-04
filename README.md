@@ -6,32 +6,9 @@ whitespace			::= c.is_whitespace()
 ws					::= whitespace
 
 number			   	::= ws* [0-9]+					只支持十进制整数
-```
-
-
-
-
-
-词元定义
-
-```
-<Plus>    ::= "+"
-<Minus>   ::= "-"
-<Number>  ::= [0-9]+
-```
-
-语法定义
-
-```
-Expr	  ::=  Number
-			 | Expr BinOP Expr
-BinOp	  ::=  Plus
-```
-
-```
-expr   ::= term (addop term)*
-term   ::= factor (mulop factor)*
-factor ::= expr | number
+factor				::= number | ("(" expr ")")
+term				::= factor (("*"|"/") factor)*
+expr				::= term (("+"|"-") term)*
 ```
 
 + 体现了优先级和结合性

@@ -1,6 +1,6 @@
 use super::{Node, Symbol};
 pub use super::nom::{Parser, Context};
-use super::{nom, nom::{pair, right, whitespace, the_char, PResult}};
+use super::{nom, nom::{either, pair, right, left, whitespace, the_char, PResult}};
 
 #[allow(unused)]
 pub fn number<'a>() -> impl Parser<'a, Node> {
@@ -12,7 +12,17 @@ pub fn number<'a>() -> impl Parser<'a, Node> {
 
 #[allow(unused)]
 fn factor<'a>() -> impl Parser<'a, Node> {
-    number()
+    either(
+        number(),
+        right(whitespace::<false>(), the_char::<'('>)
+            // TODO 为什么需要使用 and_then 包裹递归
+            .and_then(|_| {
+                left(
+                    expr(),
+                    right(whitespace::<false>(), the_char::<')'>),
+                )
+            })
+    )
 }
 
 #[allow(unused)]
