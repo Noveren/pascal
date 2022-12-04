@@ -5,7 +5,7 @@
 whitespace			::= c.is_whitespace()
 ws					::= whitespace
 
-number			   	::= ws* [0-9]+
+number			   	::= ws* [0-9]+					只支持十进制整数
 ```
 
 

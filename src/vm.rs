@@ -16,7 +16,7 @@ pub fn new() -> VM {
         ans: 0.,
         env: HashMap::new(),
     };
-    vm.env.insert("+".to_string(), |vm| {
+    vm.env.insert("ADD".to_string(), |vm| {
         let right = vm.stack.pop()
             .ok_or("expect right oprand")?;
         let left  = vm.stack.pop()
@@ -24,7 +24,7 @@ pub fn new() -> VM {
         vm.stack.push(left + right);
         return Ok(());
     });
-    vm.env.insert("-".to_string(), |vm| {
+    vm.env.insert("SUB".to_string(), |vm| {
         let right = vm.stack.pop()
             .ok_or("expect right oprand")?;
         let left  = vm.stack.pop()
@@ -32,7 +32,7 @@ pub fn new() -> VM {
         vm.stack.push(left - right);
         return Ok(());
     });
-    vm.env.insert("*".to_string(), |vm| {
+    vm.env.insert("MUL".to_string(), |vm| {
         let right = vm.stack.pop()
             .ok_or("expect right oprand")?;
         let left  = vm.stack.pop()
@@ -40,7 +40,7 @@ pub fn new() -> VM {
         vm.stack.push(left * right);
         return Ok(());
     });
-    vm.env.insert("/".to_string(), |vm| {
+    vm.env.insert("DIV".to_string(), |vm| {
         let right = vm.stack.pop()
             .ok_or("expect right oprand")?;
         let left  = vm.stack.pop()
@@ -80,7 +80,7 @@ impl VM {
     pub fn run(&mut self, src: &str) -> Result<(), String> {
         // 解析源码，生成 AST
         let (_, ast) = parser::parse(&src)
-            .map_err(|e| format!("{} {}", e.1, e.0))?;
+            .map_err(|e| format!("Parser: {} at {}", e.1, e.0))?;
         println!("{}", ast.display());
         // 执行 AST
         // self.exec(&ast)?;

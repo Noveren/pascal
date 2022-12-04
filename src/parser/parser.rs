@@ -6,7 +6,7 @@ use super::{nom, nom::{pair, right, whitespace, the_char, PResult}};
 pub fn number<'a>() -> impl Parser<'a, Node> {
     right(
         whitespace::<false>(),
-        nom::number::<10>(),
+        nom::integer::<10>(),                           // 十进制整数
     ).map(|s| Node::Number(s))
 }
 
@@ -19,7 +19,7 @@ pub fn expr<'a>() -> impl Parser<'a, Node> {
             .or(right(whitespace::<false>(), the_char::<'-'>))
             .or(right(whitespace::<false>(), the_char::<'*'>))
             .or(right(whitespace::<false>(), the_char::<'/'>))
-            .map_err(|ctx| format!("Undefined Symbol at {}", ctx)),
+            .map_err(|_| "Undefined Symbol".to_string()),
             number(),
         )
     ).map(|(n1, (op, n2))| Node::Expr(

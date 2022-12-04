@@ -306,7 +306,7 @@ pub fn whitespace<'a, const NEC: bool>() -> impl Parser<'a, ()> {
 
 /// 数字
 #[allow(unused)]
-pub fn number<'a, const RADIX: u32>() -> impl Parser<'a, String> {
+pub fn integer<'a, const RADIX: u32>() -> impl Parser<'a, String> {
     move |ctx: Context<'a>| {
         let len = catch(ctx.src, |c| c.is_digit(RADIX));
         if len > 0 {

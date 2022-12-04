@@ -28,10 +28,10 @@ macro_rules! symbol {
 }
 
 symbol!{
-    ADD, "+";
-    SUB, "-";
-    MUL, "*";
-    DIV, "/";
+    ADD, "ADD";
+    SUB, "SUB";
+    MUL, "MUL";
+    DIV, "DIV";
 }
 
 
