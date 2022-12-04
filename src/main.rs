@@ -1,7 +1,7 @@
 mod parser;
 
 fn main() {
-    todo!("...");
+    println!("{:?}", "X".rsplit('X').collect::<Vec<&str>>().len());
 }
 
 // use std::io::Write;

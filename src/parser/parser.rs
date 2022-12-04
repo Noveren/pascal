@@ -1,5 +1,4 @@
-use std::str::FromStr;
-use super::nom::Parser;
+use super::nom::{Parser, Context, perr, pok};
 
 /// 从字符串头开始匹配符合 op 的字符，返回字符的长度
 #[allow(unused)]
@@ -18,28 +17,26 @@ where
 /// 空白符
 #[allow(unused)]
 pub fn whitespace<'a, const NEC: bool>() -> impl Parser<'a, ()> {
-    move |input: &'a str| {
-        let len = catch(input, |c| c.is_whitespace());
+    move |ctx: Context<'a>| {
+        let len = catch(ctx.src, |c| c.is_whitespace());
         if len == 0 && NEC {
-            Err("No Whitespace".to_string())
+            perr(ctx, "No Whitespace".to_string())
         } else {
-            Ok((&input[len..], ()))
+            pok(ctx.move_str(&ctx.src[0..len]), ())
         }
     }
 }
 
 /// 数字
 #[allow(unused)]
-pub fn number<'a, T: FromStr, const RADIX: u32>() -> impl Parser<'a, T> {
-    move |input: &'a str| {
-        let len = catch(input, |c| c.is_digit(RADIX));
+pub fn number<'a, const RADIX: u32>() -> impl Parser<'a, String> {
+    move |ctx: Context<'a>| {
+        let len = catch(ctx.src, |c| c.is_digit(RADIX));
         if len > 0 {
-            (&input[0..len]).parse::<T>().map_or_else(
-                |_| Err(format!("Number {}", &input[0..len])),
-                |v| Ok((&input[len..], v)),
-            )
+            let num_str = &ctx.src[0..len];
+            pok(ctx.move_str(num_str), num_str.to_string())
         } else {
-            Err("No Number".to_string())
+            perr(ctx, "No Number".to_string())
         }
     }
 }
