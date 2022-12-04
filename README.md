@@ -17,7 +17,13 @@ Expr	  ::=  Number
 BinOp	  ::=  Plus
 ```
 
+```
+expr   ::= term (addop term)*
+term   ::= factor (mulop factor)*
+factor ::= expr | number
+```
 
++ 体现了优先级和结合性
 
 ## 拾遗
 
@@ -29,7 +35,7 @@ BinOp	  ::=  Plus
 use std
 ```
 
-### 读取用户输入
+## 读取用户输入
 
 ```rust
 let stdin = std::io::stdin();
@@ -37,4 +43,18 @@ let stdin = std::io::stdin();
 std::io::stdio::Stdin
 pub fn read_line(&self, buf: &mut String) -> io::Result<usize>
 ```
+
+### Result
+
+| 函数名                                 | 作用                                                     |
+| -------------------------------------- | -------------------------------------------------------- |
+| is_ok, is_ok_and, is_err, is_err_and   | 判断结果类型                                             |
+| map, map_or, map_or_else, map_err      | 对结果进行变换                                           |
+| inspect, inspect_err                   | 若ok则执行闭包，但返回原Ok<br />......<br />不稳定的特性 |
+| expect, expect_err, unwrap, unwrap_err | 解包或恐慌                                               |
+| unwrap_or_default, unwrap_or           | 解包或默认值                                             |
+| into_ok, into_err                      | 一定可以解包                                             |
+| and, or                                | 与, 或，从左向右取结果                                   |
+| and_then                               | 若ok, 则使用ok值执行，返回一个新结果                     |
+| or_else                                | 若err，......                                            |
 
