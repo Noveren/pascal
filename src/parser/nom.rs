@@ -1,5 +1,65 @@
+use crate::utils::catch;
+use std::fmt::Display;
+
+
+/// 上下文 字符串切片、解析位置、行、列
 #[allow(unused)]
-pub type PResult<'a, T> = Result<(&'a str, T), String>;
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Context<'a> {
+    pub src: &'a str,
+    pos: (usize, usize)
+}
+
+impl<'a> Context<'a> {
+    #[allow(unused)]
+    pub const fn new(src: &'a str) -> Self {
+        Context { src, pos: (0, 0) }
+    }
+    #[allow(unused)]
+    pub fn move_char(self, c: char) -> Self {
+        Context {
+            src: &self.src[c.len_utf8()..],
+            pos: if c == '\n' { (self.pos.0 + 1, 0) } else { (self.pos.0, self.pos.1 + 1) }
+        }
+    }
+    #[allow(unused)]
+    pub fn move_str(self, s: &str) -> Self {
+        Context {
+            src: &self.src[s.len()..],
+            pos: {
+                let ss: Vec<&str> = s.rsplit('\n').collect();
+                if ss.len() >  1{
+                    (self.pos.0 + ss.len() - 1, ss.last().unwrap().len())
+                } else {
+                    (self.pos.0, self.pos.1 + s.len())
+                }
+            }
+        }
+    }
+}
+
+impl<'a> Display for Context<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "row: {} col: {} ...> {}...",
+            self.pos.0, self.pos.1,
+            if self.src.len() > 8 { &self.src[0..8] } else { self.src }
+        )
+    }
+}
+
+
+#[allow(unused)]
+pub type PResult<'a, T> = Result<(Context<'a>, T), (Context<'a>, String)>;
+
+#[allow(unused)]
+pub const fn pok<'a, T>(ctx: Context<'a>, result: T) -> PResult<'a, T> {
+    Ok((ctx, result))
+}
+
+#[allow(unused)]
+pub const fn perr<'a, T>(ctx: Context<'a>, err: String) -> PResult<'a, T> {
+    Err((ctx, err))
+}
 
 #[allow(unused)]
 pub struct ParserBox<'a, T> {
@@ -14,22 +74,22 @@ impl<'a, T> ParserBox<'a, T> {
 }
 
 impl<'a, T> Parser<'a, T> for ParserBox<'a, T> {
-    fn parse(&self, input: &'a str) -> PResult<'a, T> {
-        self.parser.parse(input)
+    fn parse(&self, ctx: Context<'a>) -> PResult<'a, T> {
+        self.parser.parse(ctx)
     }
 }
 
 impl<'a, F, T> Parser<'a, T> for F
 where
-    F: Fn(&'a str) -> PResult<'a, T>,
+    F: Fn(Context<'a>) -> PResult<'a, T>,
 {
-    fn parse(&self, input: &'a str) -> PResult<'a, T> {
-        self(input)
+    fn parse(&self, ctx: Context<'a>) -> PResult<'a, T> {
+        self(ctx)
     }
 }
 
 pub trait Parser<'a, T> {
-    fn parse(&self, input: &'a str) -> PResult<'a, T>;
+    fn parse(&self, ctx: Context<'a>) -> PResult<'a, T>;
     /// 不可反驳，对解析结果进行变换
     fn map<F: 'a, U: 'a>(self, op: F) -> ParserBox<'a, U>
     where
@@ -37,8 +97,18 @@ pub trait Parser<'a, T> {
         F: Fn(T) -> U,
     {
         ParserBox::new(
-            move |input| self.parse(input)
-                .map(|(next, result)| (next, op(result)))
+            move |ctx| self.parse(ctx)
+                .map(|(ctx, result)| (ctx, op(result)))
+        )
+    }
+    fn map_err<F: 'a>(self, op: F) -> ParserBox<'a, T>
+    where
+        Self: Sized + 'a,
+        F: Fn(&Context<'a>) -> String,
+    {
+        ParserBox::new(
+            move |ctx| self.parse(ctx)
+                .map_err(|(ctx, _)| (ctx, op(&ctx)))
         )
     }
     /// 可反驳，对解析结果进行断言
@@ -48,11 +118,11 @@ pub trait Parser<'a, T> {
         F: Fn(&T) -> bool,
     {
         ParserBox::new(
-            move |input| self.parse(input)
-                .and_then(|(next, result)| if op(&result) {
-                    Ok((next, result))
+            move |ctx| self.parse(ctx)
+                .and_then(|(ctx, result)| if op(&result) {
+                    pok(ctx, result)
                 } else {
-                    Err("Assert".to_string())
+                    perr(ctx, "Assert".to_string())
                 })
         )
     }
@@ -63,12 +133,12 @@ pub trait Parser<'a, T> {
         P: Parser<'a, U>,
     {
         ParserBox::new(
-            move |input| match self.parse(input) {
+            move |ctx| match self.parse(ctx) {
                 Err(err) => Err(err),
                 Ok((next, result)) => {
                     match p.parse(next) {
-                        Err(_) => Ok((next, result)),
-                        Ok(_)  => Err("Not Tail".to_string()),
+                        Err(_) => pok(ctx, result),
+                        Ok(_)  => perr(ctx, "Not Tail".to_string()),
                     }
                 }
             }
@@ -83,7 +153,7 @@ pub trait Parser<'a, T> {
         F: Fn(T) -> P,
     {
         ParserBox::new(
-            move |input| match self.parse(input) {
+            move |ctx| match self.parse(ctx) {
                 Err(err) => Err(err),
                 Ok((next, result)) => op(result).parse(next),
             }
@@ -95,19 +165,19 @@ pub trait Parser<'a, T> {
         Self: Sized + 'a,
     {
         ParserBox::new(
-            move |mut input| {
+            move |mut ctx| {
                 let mut result = Vec::<T>::new();
-                if let Ok((next, item)) = self.parse(input) {
-                    input = next;
+                if let Ok((next, item)) = self.parse(ctx) {
+                    ctx = next;
                     result.push(item);
                 } else {
-                    return Err("one_more".to_string());
+                    return perr(ctx, "One More".to_string());
                 }
-                while let Ok((next, item)) = self.parse(input) {
-                    input = next;
+                while let Ok((next, item)) = self.parse(ctx) {
+                    ctx = next;
                     result.push(item)
                 }
-                Ok((input, result))
+                pok(ctx, result)
             }
         )
     }
@@ -117,13 +187,27 @@ pub trait Parser<'a, T> {
         Self: Sized + 'a,
     {
         ParserBox::new(
-            move |mut input| {
+            move |mut ctx| {
                 let mut result = Vec::<T>::new();
-                while let Ok((next, item)) = self.parse(input) {
-                    input = next;
+                while let Ok((next, item)) = self.parse(ctx) {
+                    ctx = next;
                     result.push(item)
                 }
-                Ok((input, result))
+                Ok((ctx, result))
+            }
+        )
+    }
+
+    #[allow(unused)]
+    fn or<P: 'a>(self, p: P) -> ParserBox<'a, T>
+    where
+        Self: Sized + 'a,
+        P: Parser<'a, T>,
+    {
+        ParserBox::new(
+            move |ctx| match self.parse(ctx) {
+                ok @ Ok(_) => ok,
+                Err(_) => p.parse(ctx),
             }
         )
     }
@@ -136,8 +220,8 @@ where
     P1: Parser<'a, R1>,
     P2: Parser<'a, R2>,
 {
-    move |input| {
-        p1.parse(input).and_then(|(next, r1)| {
+    move |ctx| {
+        p1.parse(ctx).and_then(|(next, r1)| {
             p2.parse(next)
                 .map(|(next, r2)| (next, (r1, r2)))
         })
@@ -168,42 +252,68 @@ where
 
 /// 解析器适配器：先后二择器
 #[allow(unused)]
-pub fn either<'a, P1, P2, R>(p1: P1, p2: P2)
-    -> impl Parser<'a, R>
+pub fn either<'a, P1, P2, R>(p1: P1, p2: P2) -> impl Parser<'a, R>
 where
     P1: Parser<'a, R>,
     P2: Parser<'a, R>,
 {
-    move |input| match p1.parse(input) {
+    move |ctx| match p1.parse(ctx) {
         ok @ Ok(_) => ok,
-        Err(_) => p2.parse(input),
+        Err(_) => p2.parse(ctx).map_err(|(ctx, _)| (ctx, "Either".to_string())),
     }
 }
 
 /// 解析器：任意字符
 #[allow(unused)]
-pub fn any_char(input: &str) -> PResult<char> {
-    match input.chars().next() {
-        Some(c) => Ok((&input[c.len_utf8()..], c)),
-        _ => Err("any_char".to_string()),
+pub fn any_char(ctx: Context) -> PResult<char> {
+    match ctx.src.chars().next() {
+        Some(c) => pok(ctx.move_char(c), c),
+        _ => perr(ctx, "any_char".to_string()),
     }
 }
 
 /// 解析器：指定字符
 #[allow(unused)]
-pub fn the_char<const C: char>(input: &str) -> PResult<char> {
-    match input.chars().next() {
-        Some(c) if c == C => Ok((&input[C.len_utf8()..], C)),
-        _ => Err(format!("the char {}", C)),
+pub fn the_char<const C: char>(ctx: Context) -> PResult<char> {
+    match ctx.src.chars().next() {
+        Some(c) if c == C => pok(ctx.move_char(C), C),
+        _ => perr(ctx, format!("the char {}", C)),
     }
 }
 
 /// 解析器：字面量
 #[allow(unused)]
 pub fn literal<'a>(expected: &'a str) -> impl Parser<'a, ()> {
-    move |input: &'a str| match input.get(0..expected.len()) {
+    move |ctx: Context<'a>| match ctx.src.get(0..expected.len()) {
         Some(c) if c == expected =>
-            Ok((&input[expected.len()..], ())),
-        _ => Err(format!("literal {}", expected)),
+            pok(ctx.move_str(expected), ()),
+        _ => perr(ctx, format!("Literal {}", expected)),
+    }
+}
+
+/// 空白符
+#[allow(unused)]
+pub fn whitespace<'a, const NEC: bool>() -> impl Parser<'a, ()> {
+    move |ctx: Context<'a>| {
+        let len = catch(ctx.src, |c| c.is_whitespace());
+        if len == 0 && NEC {
+            perr(ctx, "No Whitespace".to_string())
+        } else {
+            pok(ctx.move_str(&ctx.src[0..len]), ())
+        }
+    }
+}
+
+/// 数字
+#[allow(unused)]
+pub fn number<'a, const RADIX: u32>() -> impl Parser<'a, String> {
+    move |ctx: Context<'a>| {
+        let len = catch(ctx.src, |c| c.is_digit(RADIX));
+        if len > 0 {
+            let num_str = &ctx.src[0..len];
+            pok(ctx.move_str(num_str), num_str.to_string())
+        } else {
+            perr(ctx, "No Number".to_string())
+        }
     }
 }

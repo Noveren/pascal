@@ -1,6 +1,17 @@
 ## Pascal 解释器 - Rust 实现
 > connect to Thinkpad E490 and Macbook Air M2
 
+```
+whitespace			::= c.is_whitespace()
+ws					::= whitespace
+
+number			   	::= ws* [0-9]+
+```
+
+
+
+
+
 词元定义
 
 ```
